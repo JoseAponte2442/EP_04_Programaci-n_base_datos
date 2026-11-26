@@ -79,4 +79,9 @@ DELETE FROM Clientes WHERE ClienteID = 5;
 * **`AuditoriaPrecios`:** Se registró el cambio de precio del `ProductoID = 2` (`650.00` → `720.00`).
 * **`AuditoriaClientesEliminados`:** Se respaldó al cliente eliminado `Ricardo Gomez` (`ClienteID = 5`).
 
-> *(Adjuntar aquí captura de resultados de SSMS)*
+> <img width="1912" height="664" alt="image" src="https://github.com/user-attachments/assets/5c860894-1a42-43cd-8f0d-c3ef43726c26" />
+<img width="1919" height="690" alt="image" src="https://github.com/user-attachments/assets/66e497d0-0e13-48e1-84f0-797baa79211c" />
+<img width="1919" height="601" alt="image" src="https://github.com/user-attachments/assets/b7ff438f-a7db-4d94-9997-7362476cd7c2" />
+
+<img width="1911" height="910" alt="image" src="https://github.com/user-attachments/assets/25fca8e3-02de-4438-bd01-cbd117af97e9" />
+<img width="1910" height="916" alt="image" src="https://github.com/user-attachments/assets/d1363f4d-951a-4ac4-8811-dd8cc07c24f9" />
