@@ -9,7 +9,6 @@
 | 3  | Andrés Francisco Pimentel Saldaña    | 73213777@mail.isil.pe |  0%    |
 | 4  | Jhonn Paul Ccasani Enciso            | 44061898@mail.isil.pe |  0%    |
 
-
 # Actividad 1: Automatización mediante Desencadenantes (Triggers) en SQL Server
 
 ## 1. Contexto y Problema
@@ -148,4 +147,64 @@ BEGIN
     INNER JOIN inserted i ON d.ProductoID = i.ProductoID
     WHERE d.Precio <> i.Precio;
 
-    PRINT 'TRIGGER UPDATE: Se
+    PRINT 'TRIGGER UPDATE: Se registró el cambio de precio en AuditoriaPrecios.';
+END;
+GO
+
+-- 3. Trigger AFTER DELETE (Uso de DELETED)
+CREATE TRIGGER trg_AuditarClienteEliminado
+ON Clientes
+AFTER DELETE
+AS
+BEGIN
+    INSERT INTO AuditoriaClientesEliminados (ClienteID, NombreCompleto, FechaEliminacion)
+    SELECT 
+        ClienteID,
+        Nombre + ' ' + Apellido,
+        GETDATE()
+    FROM deleted;
+
+    PRINT 'TRIGGER DELETE: Se registró el cliente eliminado en AuditoriaClientesEliminados.';
+END;
+GO
+```
+
+---
+
+## 5. Pruebas de Modificación y Evidencia de Resultados
+
+### 5.1. Ejecución de Pruebas DML
+```sql
+-- Prueba 1 (INSERT): Venta de 2 unidades de Laptop HP (ProductoID = 1)
+INSERT INTO Ventas (ClienteID, ProductoID, Cantidad, FechaVenta)
+VALUES (2, 1, 2, GETDATE());
+GO
+
+-- Prueba 2 (UPDATE): Actualización de precio de Monitor Samsung (ProductoID = 2)
+UPDATE Productos
+SET Precio = 720.00
+WHERE ProductoID = 2;
+GO
+
+-- Prueba 3 (DELETE): Eliminación del cliente Ricardo Gomez (ClienteID = 5)
+DELETE FROM Clientes
+WHERE ClienteID = 5;
+GO
+
+-- Consultas de verificación
+SELECT * FROM Productos;
+SELECT * FROM AuditoriaPrecios;
+SELECT * FROM Clientes;
+SELECT * FROM AuditoriaClientesEliminados;
+GO
+```
+
+### 5.2. Resultados Verificados en el Servidor
+
+1. **Control de Stock (`Productos`):** Tras insertar una venta de 2 unidades de `Laptop HP`, el trigger `trg_DescontarStock` redujo automáticamente el inventario de `15` a **`13`**.
+2. **Auditoría de Precios (`AuditoriaPrecios`):** Tras actualizar el precio del `Monitor Samsung`, el trigger `trg_AuditarCambioPrecio` registró `PrecioAnterior = 650.00` y `PrecioNuevo = 720.00` con su fecha de modificación.
+3. **Auditoría de Eliminaciones (`AuditoriaClientesEliminados`):** Tras eliminar al registro `ClienteID = 5`, el trigger `trg_AuditarClienteEliminado` conservó el respaldo de `Ricardo Gomez` junto con la marca de tiempo de eliminación.
+
+### 5.3. Capturas de Evidencia
+> *(Espacio para adjuntar las capturas de la pestaña **Resultados** y **Mensajes** de SQL Server Management Studio)*
+> `![Evidencia Resultados](ruta/a/tu_captura.png)`
