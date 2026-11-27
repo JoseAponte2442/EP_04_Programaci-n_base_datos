@@ -28,7 +28,7 @@ Implementación de desencadenantes (`triggers`) en **Microsoft SQL Server** (`DB
 USE DB_GestionComercial_EP04;
 GO
 
--- 1. AFTER INSERT (Uso de INSERTED)
+	/* Trigger 01 para registrar los datos insertados en la tabla productos*/
 CREATE OR ALTER TRIGGER dbo.trg_RegistroProducto
 ON dbo.Productos
 AFTER INSERT
@@ -80,7 +80,7 @@ SELECT * FROM dbo.AuditoriaPrecios;
 
 ```sql
 
--- 3. AFTER DELETE (Uso de DELETED)
+	/* Trigger 03 para guardar a los clientes eliminados*/
 CREATE OR ALTER TRIGGER trg_AuditarClienteEliminado
 ON Clientes AFTER DELETE
 AS
