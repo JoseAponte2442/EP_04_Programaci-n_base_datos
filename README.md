@@ -6,7 +6,7 @@
 |----|--------------------------------------|-----------------------|--------|
 | 1  | Imanol Ponce de León                 | 76221830@mail.isil.pe |  100%  |
 | 2  | Jose Manuel Aponte Tanta             | 75619512@mail.isil.pe |  100%  |
-| 3  | Andrés Francisco Pimentel Saldaña    | 73213777@mail.isil.pe |  0%    |
+| 3  | Andrés Francisco Pimentel Saldaña    | 73213777@mail.isil.pe |  100%    |
 | 4  | Jhonn Paul Ccasani Enciso            | 44061898@mail.isil.pe |  0%    |
 
 # Actividad 1: Automatización mediante Desencadenantes (Triggers)
