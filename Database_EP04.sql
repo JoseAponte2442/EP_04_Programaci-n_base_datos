@@ -37,6 +37,7 @@ CREATE TABLE AuditoriaProductos (
 
 CREATE TABLE AuditoriaPrecios (
     AuditoriaID INT IDENTITY(1,1) PRIMARY KEY,
+	NombreProducto NVARCHAR(50),
     ProductoID INT,
     PrecioAnterior MONEY,
     PrecioNuevo MONEY,
