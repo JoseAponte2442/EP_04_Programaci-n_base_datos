@@ -98,7 +98,7 @@ GO
 
 
 # Actividad 2: Funciones Escalares y Funciones de Tipo Tabla
-
+* Hecha por Andrés Pimentel
 ## 1. Descripción y Justificación
 
 Implementación de funciones definidas por el usuario (UDF) en **Microsoft SQL Server (`DB_GestionComercial_EP04`)** para abstraer cálculos comerciales repetitivos y consultas parametrizadas de ventas. Encapsular estas operaciones en objetos del servidor evita duplicar fórmulas de descuento e impuestos en múltiples consultas, centraliza el mantenimiento ante cambios en las reglas de negocio y garantiza resultados consistentes en toda la base de datos.
