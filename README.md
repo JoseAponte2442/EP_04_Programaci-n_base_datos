@@ -164,12 +164,13 @@ INNER JOIN dbo.Productos as p on v.ProductoID = p.ProductoID
 where dbo.fn_CalcularTotalConIGV(p.Precio, v.Cantidad) > 500
 order by v.VentaID;
 go
-
-* `dbo.fn_CalcularTotalConIGV` : Se invocó en las cláusulas `SELECT` y `WHERE` para calcular el importe con IGV y filtrar ventas mayores a `500.00`. La consulta retorna 4 registros (`VentaID` 1, 3, 4 y 5), excluye la venta de 2 Mouse Inalámbrico (`177.00`) y aplica el 5% de descuento por volumen en la venta de 3 Teclado Mecánico (`SubtotalBruto = 540.00` → `TotalConIGV = 605.34`).
+```
+`dbo.fn_CalcularTotalConIGV` : Se invocó en las cláusulas `SELECT` y `WHERE` para calcular el importe con IGV y filtrar ventas mayores a `500.00`. La consulta retorna 4 registros (`VentaID` 1, 3, 4 y 5), excluye la venta de 2 Mouse Inalámbrico (`177.00`) y aplica el 5% de descuento por volumen en la venta de 3 Teclado Mecánico (`SubtotalBruto = 540.00` → `TotalConIGV = 605.34`).
 
 
 
 /* Función tipo tabla */
+```sql
 create OR alter function dbo.fn_ReporteVentasPorCiudad (
     @Ciudad nvarchar(50)
 )
@@ -198,5 +199,5 @@ select *
 from dbo.fn_ReporteVentasPorCiudad('Lima')
 order BY FechaVenta;
 go
-
-* `dbo.fn_ReporteVentasPorCiudad` : Se consumió en la cláusula `FROM` enviando `'Lima'` como parámetro y reutilizando internamente `dbo.fn_CalcularTotalConIGV`. La consulta retorna las 3 ventas correspondientes a los clientes registrados en Lima (Carlos Mendoza y Mariana Torres), ordenadas por `FechaVenta`.
+```
+`dbo.fn_ReporteVentasPorCiudad` : Se consumió en la cláusula `FROM` enviando `'Lima'` como parámetro y reutilizando internamente `dbo.fn_CalcularTotalConIGV`. La consulta retorna las 3 ventas correspondientes a los clientes registrados en Lima (Carlos Mendoza y Mariana Torres), ordenadas por `FechaVenta`.
