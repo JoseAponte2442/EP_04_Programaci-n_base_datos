@@ -92,6 +92,10 @@ BEGIN
     FROM deleted;
 END;
 GO
+
+DELETE FROM Clientes WHERE ClienteID = 5;
+
+SELECT * FROM AuditoriaClientesEliminados;
 ```
 
 * **`AuditoriaClientesEliminados`:** Se respaldó al cliente eliminado `Ricardo Gomez` (`ClienteID = 5`).
