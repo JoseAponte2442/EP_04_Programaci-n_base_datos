@@ -164,3 +164,39 @@ INNER JOIN dbo.Productos as p on v.ProductoID = p.ProductoID
 where dbo.fn_CalcularTotalConIGV(p.Precio, v.Cantidad) > 500
 order by v.VentaID;
 go
+
+* `dbo.fn_CalcularTotalConIGV` : Se invocó en las cláusulas `SELECT` y `WHERE` para calcular el importe con IGV y filtrar ventas mayores a `500.00`. La consulta retorna 4 registros (`VentaID` 1, 3, 4 y 5), excluye la venta de 2 Mouse Inalámbrico (`177.00`) y aplica el 5% de descuento por volumen en la venta de 3 Teclado Mecánico (`SubtotalBruto = 540.00` → `TotalConIGV = 605.34`).
+
+
+
+/* Función tipo tabla */
+create OR alter function dbo.fn_ReporteVentasPorCiudad (
+    @Ciudad nvarchar(50)
+)
+returns table
+as
+return (
+    select
+        v.VentaID,
+        c.Nombre + ' ' + c.Apellido as Cliente,
+        c.Ciudad,
+        p.NombreProducto,
+        v.Cantidad,
+        p.Precio as PrecioUnitario,
+        (p.Precio * v.Cantidad) as SubtotalBruto,
+        dbo.fn_CalcularTotalConIGV(p.Precio, v.Cantidad) as TotalConIGV,
+        v.FechaVenta
+    from dbo.Ventas as v
+    inner join dbo.Clientes as c on v.ClienteID = c.ClienteID
+    inner join dbo.Productos as p on v.ProductoID = p.ProductoID
+    where c.Ciudad = @Ciudad
+);
+go
+
+-- 2. Consumo de la función de tipo tabla en la cláusula FROM (como tabla parametrizada)
+select *
+from dbo.fn_ReporteVentasPorCiudad('Lima')
+order BY FechaVenta;
+go
+
+* `dbo.fn_ReporteVentasPorCiudad` : Se consumió en la cláusula `FROM` enviando `'Lima'` como parámetro y reutilizando internamente `dbo.fn_CalcularTotalConIGV`. La consulta retorna las 3 ventas correspondientes a los clientes registrados en Lima (Carlos Mendoza y Mariana Torres), ordenadas por `FechaVenta`.
