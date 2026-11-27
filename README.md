@@ -95,3 +95,72 @@ GO
 
 * **`AuditoriaClientesEliminados`:** Se respaldó al cliente eliminado `Ricardo Gomez` (`ClienteID = 5`).
 <img width="1111" height="539" alt="image" src="https://github.com/user-attachments/assets/ad263359-47e0-40b6-864d-ed4d4de778e1" />
+
+
+# Actividad 2: Funciones Escalares y Funciones de Tipo Tabla
+
+## 1. Descripción y justificación
+
+Implementación de funciones definidas por el usuario (UDF) en **Microsoft SQL Server (`DB_GestionComercial_EP04`)** para abstraer cálculos comerciales repetitivos y consultas parametrizadas de ventas. Encapsular estas operaciones en objetos del servidor evita duplicar fórmulas de descuento e impuestos en múltiples consultas, centraliza el mantenimiento ante cambios en las reglas de negocio y garantiza resultados consistentes en toda la base de datos.
+
+---
+
+## 2. Funciones Implementadas
+
+| Función | Tipo | Parámetros | Retorno | Acción / Propósito |
+| :--- | :--- | :--- | :--- | :--- |
+| `dbo.fn_CalcularTotalConIGV` | Escalar | `@Precio money`, `@Cantidad int` | `money` | Calcula el importe total de una venta aplicando descuento por volumen (5% desde 3 unidades y 10% desde 5 unidades) más el 18% de IGV. |
+| `dbo.fn_ReporteVentasPorCiudad` | Tabla (*Inline*) | `@Ciudad nvarchar(50)` | `table` | Devuelve el detalle de ventas realizadas a clientes de una ciudad específica, integrando `Ventas`, `Clientes` y `Productos`. |
+
+---
+
+## 3. Código SQL y Pruebas de Consumo
+
+### Función 01: Escalar (`dbo.fn_CalcularTotalConIGV`)
+
+```sql
+use DB_GestionComercial_EP04;
+go
+
+/* Función escalar */
+create or alter function dbo.fn_CalcularTotalConIGV (
+    @Precio money,
+    @Cantidad int
+)
+returns money
+as
+begin
+    declare @Subtotal money;
+    declare @Descuento money;
+    declare @TotalConIGV money;
+
+    if @Precio is null or @Cantidad is null or @Precio < 0 or @Cantidad <= 0
+        return 0;
+
+    set @Subtotal = @Precio * @Cantidad;
+
+    set @Descuento = case
+        when @Cantidad >= 5 then @Subtotal * 0.10
+        when @Cantidad >= 3 then @Subtotal * 0.05
+        else 0
+    end;
+
+    set @TotalConIGV = round((@Subtotal - @Descuento) * 1.18, 2);
+
+    return @TotalConIGV;
+end;
+go
+
+-- 1. Consumo de la función escalar como expresión en SELECT y filtro en WHERE
+select
+    v.VentaID,
+    p.NombreProducto,
+    p.Precio,
+    v.Cantidad,
+    (p.Precio * v.Cantidad) as SubtotalBruto,
+    dbo.fn_CalcularTotalConIGV(p.Precio, v.Cantidad) as TotalConIGV
+from dbo.Ventas as v
+INNER JOIN dbo.Productos as p on v.ProductoID = p.ProductoID
+where dbo.fn_CalcularTotalConIGV(p.Precio, v.Cantidad) > 500
+order by v.VentaID;
+go
