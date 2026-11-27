@@ -114,9 +114,9 @@ Implementación de funciones definidas por el usuario (UDF) en **Microsoft SQL S
 
 ---
 
-## 3. Código SQL y Pruebas de Consumo
+## 3. Código SQL y pruebas de consumo
 
-### Función 01: Escalar (`dbo.fn_CalcularTotalConIGV`)
+### Función 01: escalar (`dbo.fn_CalcularTotalConIGV`)
 
 ```sql
 use DB_GestionComercial_EP04;
@@ -168,12 +168,12 @@ order by v.VentaID;
 go
 ```
 
-* `dbo.fn_CalcularTotalConIGV` : Se invocó en las cláusulas `SELECT` y `WHERE` para calcular el importe con IGV y filtrar ventas mayores a `500.00`. La consulta retorna 4 registros (`VentaID` 1, 3, 4 y 5), excluye la venta de 2 Mouse Inalámbrico (`177.00`) y aplica el 5% de descuento por volumen en la venta de 3 Teclado Mecánico (`SubtotalBruto = 540.00` → `TotalConIGV = 605.34`).
+* `dbo.fn_CalcularTotalConIGV` : Se invocó en las cláusulas `SELECT` y `WHERE` para calcular el importe con IGV y filtrar ventas mayores a `S/500.00`. La consulta retorna 4 registros (`VentaID` 1, 3, 4 y 5), excluye la venta de 2 mouse inalámbricos (`S/177.00`) y aplica el 5% de descuento por volumen en la venta de 3 teclados mecánicos (`SubtotalBruto = S/540.00` → `TotalConIGV = S/605.34`).
 
 
 ---
 
-### Función 02: De tipo tabla (`dbo.fn_ReporteVentasPorCiudad`)
+### Función 02: tipo tabla (`dbo.fn_ReporteVentasPorCiudad`)
 
 ```sql
 /* Función tipo tabla */
@@ -212,7 +212,7 @@ go
 
 ---
 
-## 4. Comparación Funcional y Pertinencia de Uso
+## 4. Comparación funcional y cuándo conviene usarlas
 
 ### Diferencias principales entre ambas funciones
 
