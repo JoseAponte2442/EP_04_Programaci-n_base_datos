@@ -40,52 +40,61 @@ BEGIN
     FROM inserted AS i;
 END;
 GO
+
+INSERT INTO dbo.Productos (NombreProducto, Precio, Stock)
+VALUES ('Audífonos Sony', 350.00, 20);
+
+SELECT * FROM dbo.Productos;
+SELECT * FROM dbo.AuditoriaProductos;
+
+
 ```
+* **`Productos`:** Se registra todo ingreso de productos nuevos.
+
 <img width="1453" height="789" alt="image" src="https://github.com/user-attachments/assets/c83270d5-2ca2-4c00-93ec-c6056785fd22" />
 
 
 ```sql
--- 2. AFTER UPDATE (Uso de DELETED e INSERTED)
-CREATE TRIGGER trg_AuditarCambioPrecio
-ON Productos AFTER UPDATE
+	/* Trigger 02 para registrar los cambios de precio*/
+CREATE OR ALTER TRIGGER dbo.trg_AuditarCambioPrecio
+ON dbo.Productos AFTER UPDATE
 AS
 BEGIN
-    INSERT INTO AuditoriaPrecios (ProductoID, PrecioAnterior, PrecioNuevo, FechaCambio)
-    SELECT d.ProductoID, d.Precio, i.Precio, GETDATE()
-    FROM deleted d
-    INNER JOIN inserted i ON d.ProductoID = i.ProductoID
-    WHERE d.Precio <> i.Precio;
-    PRINT 'TRIGGER UPDATE: Se registró el cambio de precio en AuditoriaPrecios.';
+    SET NOCOUNT ON;
+    INSERT INTO dbo.AuditoriaPrecios (ProductoID, NombreProducto, PrecioAnterior, PrecioNuevo, FechaCambio)
+    SELECT d.ProductoID, i.NombreProducto,d.Precio, i.Precio, GETDATE()
+    FROM inserted AS i JOIN deleted as d ON d.ProductoID = i.ProductoID
+    where i.Precio <> d.Precio
 END;
 GO
 
+UPDATE dbo.Productos
+SET Precio = 2900.00
+WHERE ProductoID = 1;
+
+SELECT * FROM dbo.AuditoriaPrecios;
+```
+* **`AuditoriaPrecios`:** Se registró el cambio de precio del `ProductoID = 1` ( nuevo precio → `2900.00`).
+
+<img width="1200" height="543" alt="image" src="https://github.com/user-attachments/assets/80e2a13f-5552-4d07-8df8-2656ff4a70f9" />
+
+```sql
+
 -- 3. AFTER DELETE (Uso de DELETED)
-CREATE TRIGGER trg_AuditarClienteEliminado
+CREATE OR ALTER TRIGGER trg_AuditarClienteEliminado
 ON Clientes AFTER DELETE
 AS
 BEGIN
+    SET NOCOUNT ON;
     INSERT INTO AuditoriaClientesEliminados (ClienteID, NombreCompleto, FechaEliminacion)
     SELECT ClienteID, Nombre + ' ' + Apellido, GETDATE()
     FROM deleted;
-    PRINT 'TRIGGER DELETE: Se registró el cliente eliminado en AuditoriaClientesEliminados.';
 END;
 GO
 ```
-
-## 4. Pruebas y Resultados
-```sql
-INSERT INTO Ventas (ClienteID, ProductoID, Cantidad, FechaVenta) VALUES (2, 1, 2, GETDATE());
-UPDATE Productos SET Precio = 720.00 WHERE ProductoID = 2;
-DELETE FROM Clientes WHERE ClienteID = 5;
-```
-
-* **`Productos`:** El stock de `Laptop HP` bajó automáticamente de `15` a **`13`**.
-* **`AuditoriaPrecios`:** Se registró el cambio de precio del `ProductoID = 2` (`650.00` → `720.00`).
+<img width="1111" height="539" alt="image" src="https://github.com/user-attachments/assets/ad263359-47e0-40b6-864d-ed4d4de778e1" />
 * **`AuditoriaClientesEliminados`:** Se respaldó al cliente eliminado `Ricardo Gomez` (`ClienteID = 5`).
 
-> <img width="1912" height="664" alt="image" src="https://github.com/user-attachments/assets/5c860894-1a42-43cd-8f0d-c3ef43726c26" />
-<img width="1919" height="690" alt="image" src="https://github.com/user-attachments/assets/66e497d0-0e13-48e1-84f0-797baa79211c" />
-<img width="1919" height="601" alt="image" src="https://github.com/user-attachments/assets/b7ff438f-a7db-4d94-9997-7362476cd7c2" />
 
 <img width="1911" height="910" alt="image" src="https://github.com/user-attachments/assets/25fca8e3-02de-4438-bd01-cbd117af97e9" />
 <img width="1910" height="916" alt="image" src="https://github.com/user-attachments/assets/d1363f4d-951a-4ac4-8811-dd8cc07c24f9" />
