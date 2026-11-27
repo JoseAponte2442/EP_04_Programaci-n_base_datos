@@ -29,7 +29,7 @@ USE DB_GestionComercial_EP04;
 GO
 
 -- 1. AFTER INSERT (Uso de INSERTED)
-CREATE OR ALTER TRIGGER dbo.EP_04_trg_AfterInsert
+CREATE OR ALTER TRIGGER dbo.trg_RegistroProducto
 ON dbo.Productos
 AFTER INSERT
 AS
