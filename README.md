@@ -18,7 +18,7 @@ Implementación de desencadenantes (`triggers`) en **Microsoft SQL Server** (`DB
 
 | Trigger | Tabla | Evento | Acción |
 | :--- | :--- | :--- | :--- |
-| `trg_DescontarStock` | `Ventas` | `AFTER INSERT` | Descuenta del `Stock` en `Productos` la cantidad registrada en `inserted`. |
+| `trg_RegistroProducto` | `Productos` | `AFTER INSERT` | Registra los nuevos ingresos en `Productos` con  `inserted`. |
 | `trg_AuditarCambioPrecio` | `Productos` | `AFTER UPDATE` | Registra en `AuditoriaPrecios` el precio previo (`deleted`) y el nuevo (`inserted`). |
 | `trg_AuditarClienteEliminado` | `Clientes` | `AFTER DELETE` | Respalda en `AuditoriaClientesEliminados` los datos capturados en `deleted`. |
 
@@ -29,18 +29,22 @@ USE DB_GestionComercial_EP04;
 GO
 
 -- 1. AFTER INSERT (Uso de INSERTED)
-CREATE TRIGGER trg_DescontarStock
-ON Ventas AFTER INSERT
+CREATE OR ALTER TRIGGER dbo.EP_04_trg_AfterInsert
+ON dbo.Productos
+AFTER INSERT
 AS
 BEGIN
-    UPDATE Productos
-    SET Stock = Productos.Stock - inserted.Cantidad
-    FROM Productos
-    INNER JOIN inserted ON Productos.ProductoID = inserted.ProductoID;
-    PRINT 'TRIGGER INSERT: Se descontó el stock del producto vendido.';
+    SET NOCOUNT ON;
+    INSERT INTO dbo.AuditoriaProductos (ProductoID, NombreProducto, Accion)
+    SELECT i.ProductoID, i.NombreProducto, 'INSERT'
+    FROM inserted AS i;
 END;
 GO
+```
+<img width="1453" height="789" alt="image" src="https://github.com/user-attachments/assets/c83270d5-2ca2-4c00-93ec-c6056785fd22" />
 
+
+```sql
 -- 2. AFTER UPDATE (Uso de DELETED e INSERTED)
 CREATE TRIGGER trg_AuditarCambioPrecio
 ON Productos AFTER UPDATE
