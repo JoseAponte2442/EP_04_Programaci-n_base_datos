@@ -241,127 +241,129 @@ go
 * **Función de tipo tabla:** Conviene utilizarla cuando se necesita encapsular una consulta multitabla que devuelva varios registros y columnas filtrados por un parámetro dinámico (por ejemplo, reportes de ventas por ciudad o historial por cliente), funcionando como una alternativa parametrizable a una vista.
 
 
-# Actividad 2: Cursor y evaluación crítica de alternativas
-* Hecha por Imanol Ponce de León
+# Actividad 3: Cursor y Evaluación Crítica de Alternativas
+- Hecha por Imanol Ponce de León
+## 1. Descripción y Justificación
 
-USE DB_GestionComercial;
-GO
+Implementación y consumo de un cursor en **Microsoft SQL Server (`DB_GestionComercial_EP04`)** para evaluar el comportamiento del procesamiento fila por fila (*row-by-row*) sobre el inventario de productos, contrastándolo frente a una operación declarativa basada en conjuntos (*set-based*). Este análisis permite determinar técnicamente cuándo resulta innecesario el recorrido secuencial y por qué el motor relacional privilegia las consultas sobre conjuntos completos.
 
-/* ============================================================================
-   1. IMPLEMENTACIÓN Y CONSUMO DEL CURSOR (Recorrido fila por fila)
-   ============================================================================
-   Objetivo: Recorrer la tabla Productos registro por registro para evaluar
-   su nivel de inventario actual y emitir una alerta individual en consola.
-   ============================================================================ */
+---
 
-PRINT '--- INICIO DE EJECUCIÓN DEL CURSOR ---';
+## 2. Objetos y Enfoques Comparados
 
--- Declaración de variables receptoras para cada columna del conjunto
-DECLARE @IdProd INT, 
-        @NombreProd VARCHAR(80), 
-        @StockActual INT,
-        @MensajeEstado VARCHAR(150);
+| Enfoque | Objeto / Instrucción | Mecanismo de Ejecución | Salida Generada | Acción |
+| :--- | :--- | :--- | :--- | :--- |
+| **Cursor** | `cur_EvaluacionStock` (`CURSOR FAST_FORWARD`) | Recorrido secuencial fila por fila mediante `OPEN`, `FETCH NEXT`, `WHILE @@FETCH_STATUS = 0`, `CLOSE` y `DEALLOCATE`. | Mensajes individuales en consola (`PRINT`). | Evalúa el `Stock` actual de cada registro de `dbo.Productos` y clasifica si requiere reposición urgente o mantiene nivel óptimo. |
+| **Basado en Conjuntos** | Consulta `SELECT` con expresión `CASE` | Lectura declarativa en bloque sobre toda la tabla `dbo.Productos`. | Conjunto de resultados tabular reutilizable. | Aplica exactamente la misma regla de clasificación de inventario en una sola operación relacional sin ciclos ni variables intermedias. |
 
--- Declaración del cursor (FAST_FORWARD: solo avance y solo lectura para optimizar recursos)
-DECLARE cur_RevisionInventario CURSOR FAST_FORWARD FOR
-SELECT IdProducto, Nombre, Stock 
-FROM dbo.Productos
-ORDER BY IdProducto ASC;
+---
 
--- Apertura del cursor (ejecuta el SELECT y carga los datos en memoria)
-OPEN cur_RevisionInventario;
+## 3. Código SQL y pruebas de ejecución
 
--- Lectura de la primera fila hacia las variables locales
-FETCH NEXT FROM cur_RevisionInventario INTO @IdProd, @NombreProd, @StockActual;
+### Enfoque 01: Implementación y consumo del cursor (`cur_EvaluacionStock`)
 
--- Bucle de recorrido mientras existan filas disponibles (@@FETCH_STATUS = 0)
-WHILE @@FETCH_STATUS = 0
-BEGIN
-    -- Evaluación lógica individual por cada fila leída
-    IF @StockActual < 20
-        SET @MensajeEstado = 'ALERTA: Reabastecer urgentemente';
-    ELSE
-        SET @MensajeEstado = 'OK: Stock dentro del rango normal';
+```sql
+use DB_GestionComercial_EP04;
+go
 
-    -- Salida verificable por consola
-    PRINT CONCAT(
-        'ID: ', @IdProd, 
-        ' | Producto: ', @NombreProd, 
-        ' | Stock: ', @StockActual, 
-        ' -> ', @MensajeEstado
+-- ACTIVIDAD 03
+
+/* Implementación y consumo de cursor */
+declare @ProductoID int;
+declare @NombreProducto nvarchar(100);
+declare @Precio money;
+declare @Stock int;
+declare @EstadoInventario nvarchar(60);
+
+declare cur_EvaluacionStock cursor fast_forward for
+select
+    ProductoID,
+    NombreProducto,
+    Precio,
+    Stock
+from dbo.Productos
+order by ProductoID;
+
+open cur_EvaluacionStock;
+
+fetch next from cur_EvaluacionStock
+into @ProductoID, @NombreProducto, @Precio, @Stock;
+
+while @@fetch_status = 0
+begin
+    if @Stock <= 10
+        set @EstadoInventario = 'ALERTA: Stock crítico - Reabastecer';
+    else if @Stock <= 25
+        set @EstadoInventario = 'ATENCIÓN: Stock moderado';
+    else
+        set @EstadoInventario = 'ÓPTIMO: Stock suficiente';
+
+    print concat(
+        'ID: ', @ProductoID,
+        ' | Producto: ', @NombreProducto,
+        ' | Precio: S/', cast(@Precio as varchar(20)),
+        ' | Stock: ', @Stock,
+        ' -> ', @EstadoInventario
     );
 
-    -- Avance al siguiente registro
-    FETCH NEXT FROM cur_RevisionInventario INTO @IdProd, @NombreProd, @StockActual;
-END;
+    fetch next from cur_EvaluacionStock
+    into @ProductoID, @NombreProducto, @Precio, @Stock;
+end;
 
--- Liberación obligatoria de recursos y memoria asignada al cursor
-CLOSE cur_RevisionInventario;
-DEALLOCATE cur_RevisionInventario;
+close cur_EvaluacionStock;
+deallocate cur_EvaluacionStock;
+go
+```
 
-PRINT '--- FIN DE EJECUCIÓN DEL CURSOR ---';
-GO
-
-
-/* ============================================================================
-   2. ALTERNATIVA COMPARADA: OPERACIÓN BASADA EN CONJUNTOS (Set-Based)
-   ============================================================================
-   Objetivo: Resolver exactamente la misma regla de negocio mediante una
-   consulta declarativa estándar utilizando la expresión condicional CASE.
-   ============================================================================ */
-
-SELECT 
-    IdProducto AS [ID],
-    Nombre AS [Producto],
-    PrecioUnitario AS [Precio Unitario],
-    Stock AS [Stock Actual],
-    CASE 
-        WHEN Stock < 20 THEN 'ALERTA: Reabastecer urgentemente'
-        ELSE 'OK: Stock dentro del rango normal'
-    END AS [Estado de Inventario]
-FROM dbo.Productos
-ORDER BY IdProducto ASC;
-GO
+- `cur_EvaluacionStock` : Se declaró con la opción `FAST_FORWARD` (solo avance y solo lectura) para reducir la sobrecarga en memoria mientras recorre `dbo.Productos`. En cada iteración del bucle `WHILE @@FETCH_STATUS = 0`, el cursor carga los valores de la fila actual en variables escalares, evalúa el nivel de stock mediante condicionales `IF ... ELSE` e imprime el diagnóstico individual en la pestaña de mensajes de SSMS, liberando finalmente los recursos con `CLOSE` y `DEALLOCATE`.
 
 
-/* ============================================================================
-   3. COMPARACIÓN TÉCNICA Y CONCLUSIÓN SUSTENTADA
-   ============================================================================
 
-   A) VENTAJAS DEL CURSOR (Enfoque Procedimental / Row-By-Row):
-      - Control granular: Permite ejecutar lógica compleja fila por fila cuando 
-        cada registro exige invocar un procedimiento almacenado externo, enviar 
-        correos individuales o realizar cálculos donde la fila N depende 
-        estrictamente del resultado de la fila N-1.
-      - Claridad algorítmica: Resulta familiar para desarrolladores acostumbrados 
-        a estructuras iterativas (while/for) en programación imperativa.
+---
 
-   B) DESVENTAJAS E IMPLICANCIAS EN SQL SERVER:
-      - Sobrecarga de memoria y TempDB: El cursor reserva espacio en memoria y 
-        en la base de datos temporal (tempdb) para mantener el conjunto activo 
-        durante todo el ciclo de vida (OPEN hasta DEALLOCATE).
-      - Mayor tiempo de bloqueo (Concurrencia): Mantiene bloqueos compartidos o 
-        de actualización sobre las filas durante más tiempo, incrementando el 
-        riesgo de contención con otras transacciones concurrentes.
-      - Costo de CPU y red: Ejecutar múltiples instrucciones FETCH genera 
-        cambios de contexto repetitivos en el motor por cada registro procesado.
-      - Riesgo de fuga de recursos: Si ocurre un error antes de ejecutar CLOSE y 
-        DEALLOCATE, el cursor permanece abierto consumiendo recursos de sesión.
+### Enfoque 02: Alternativa basada en conjuntos (`SELECT` + `CASE`)
 
-   C) CONCLUSIÓN TÉCNICAMENTE SUSTENTADA:
-      Para el caso de evaluación de inventario y las operaciones comerciales 
-      de la organización, NO resulta apropiado preferir el cursor frente a la 
-      alternativa basada en conjuntos. 
-      
-      Microsoft SQL Server es un motor relacional diseñado y optimizado para 
-      procesar conjuntos completos de datos en bloque mediante álgebra relacional. 
-      La consulta con CASE resuelve el requerimiento en una sola lectura de 
-      páginas de datos, permite al optimizador de consultas aprovechar índices y 
-      paralelismo, reduce la contención de bloqueos y entrega un resultado 
-      tabular reutilizable por aplicaciones o reportes.
-      
-      El uso de cursores debe restringirse únicamente a tareas administrativas 
-      puntuales (como respaldos iterativos de múltiples bases de datos o 
-      ejecución de procedimientos almacenados por fila) donde una operación de 
-      conjunto sea técnicamente inviable.
-   ============================================================================ */
+```sql
+/* Alternativa comparada: consulta basada en conjuntos */
+select
+    p.ProductoID,
+    p.NombreProducto,
+    p.Precio,
+    p.Stock,
+    case
+        when p.Stock <= 10 then 'ALERTA: Stock crítico - Reabastecer'
+        when p.Stock <= 25 then 'ATENCIÓN: Stock moderado'
+        else 'ÓPTIMO: Stock suficiente'
+    end as EstadoInventario
+from dbo.Productos as p
+order by p.ProductoID;
+go
+```
+
+- **Consulta basada en conjuntos** : Resuelve la misma clasificación de inventario de forma declarativa en una única sentencia `SELECT`. El optimizador de SQL Server procesa todas las filas en bloque y retorna una tabla estructurada lista para ser consumida por reportes, vistas o aplicaciones cliente sin necesidad de administrar ciclos ni memoria temporal manualmente.
+
+
+
+---
+
+## 4. Comparación técnica y conclusión sustentada
+
+### Ventajas, desventajas e implicancias de ambos enfoques
+
+- **Gestión de memoria y recursos del servidor:**
+  - **Cursor (`cur_EvaluacionStock`):** Reserva espacio en memoria y en `tempdb` para sostener el conjunto activo desde `OPEN` hasta `DEALLOCATE`. Si una excepción interrumpe el bloque antes de liberar el cursor, los recursos permanecen retenidos en la sesión.
+  - **Operación basada en conjuntos:** No requiere estructuras iterativas ni liberación manual de memoria; el motor administra el plan de ejecución de forma automática y eficiente.
+
+- **Rendimiento y concurrencia:**
+  - **Cursor:** Ejecuta lógica fila por fila (*RBAR - Row-By-Agonizing-Row*), incrementando el consumo de CPU por cada instrucción `FETCH NEXT` y prolongando el tiempo de bloqueo sobre los registros leídos, lo que puede generar contención si existen ventas concurrentes.
+  - **Operación basada en conjuntos:** Realiza una lectura optimizada en bloque aprovechando índices y paralelismo, reduciendo drásticamente la latencia y el tiempo de bloqueo.
+
+- **Flexibilidad operativa:**
+  - **Cursor:** Permite ejecutar acciones procedimentales individuales por cada fila (como invocar un procedimiento almacenado distinto por registro o disparar tareas secuenciales donde cada iteración depende del resultado anterior).
+  - **Operación basada en conjuntos:** Está orientada a transformar, filtrar o clasificar conjuntos completos de datos en una sola operación atómica.
+
+### Conclusión técnicamente sustentada
+
+Para este caso de negocio en **`DB_GestionComercial_EP04`**, **no resulta recomendable utilizar un cursor** en producción cuando el objetivo es consultar, clasificar o reportar el estado del inventario o las ventas. SQL Server es un sistema gestor de bases de datos relacional diseñado bajo teoría de conjuntos, por lo que la consulta declarativa con `CASE` ofrece mejor rendimiento, menor consumo de `tempdb`, menor contención de bloqueos y una salida tabular directamente integrable con otras consultas.
+
+El uso de cursores debe reservarse exclusivamente para escenarios procedimentales muy específicos —como tareas administrativas de mantenimiento por base de datos o ejecución secuencial de procedimientos almacenados por registro— donde resulte inviable expresar la lógica mediante una operación basada en conjuntos.
