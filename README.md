@@ -169,6 +169,7 @@ go
 ```
 
 * `dbo.fn_CalcularTotalConIGV` : Se invocó en las cláusulas `SELECT` y `WHERE` para calcular el importe con IGV y filtrar ventas mayores a `S/500.00`. La consulta retorna 4 registros (`VentaID` 1, 3, 4 y 5), excluye la venta de 2 mouse inalámbricos (`S/177.00`) y aplica el 5% de descuento por volumen en la venta de 3 teclados mecánicos (`SubtotalBruto = S/540.00` → `TotalConIGV = S/605.34`).
+<img width="860" height="479" alt="{D17FFBED-F5AC-4AD7-B3BC-18DF7C196604}" src="https://github.com/user-attachments/assets/297013e5-5c2b-4720-82d3-6efcdcc6094e" />
 
 
 ---
@@ -208,6 +209,7 @@ go
 ```
 
 * `dbo.fn_ReporteVentasPorCiudad` : Se consumió en la cláusula `FROM` enviando `'Lima'` como parámetro y reutilizando internamente `dbo.fn_CalcularTotalConIGV`. La consulta retorna las 3 ventas correspondientes a los clientes registrados en Lima (Carlos Mendoza y Mariana Torres), ordenadas por `FechaVenta`.
+<img width="852" height="307" alt="{1F649A7A-25E8-40C8-BC3A-1C6EC0D8E4BE}" src="https://github.com/user-attachments/assets/d804b1fe-4a5b-47c5-a555-941bccdc2a2a" />
 
 
 ---
