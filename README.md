@@ -92,9 +92,6 @@ BEGIN
 END;
 GO
 ```
-<img width="1111" height="539" alt="image" src="https://github.com/user-attachments/assets/ad263359-47e0-40b6-864d-ed4d4de778e1" />
+
 * **`AuditoriaClientesEliminados`:** Se respaldó al cliente eliminado `Ricardo Gomez` (`ClienteID = 5`).
-
-
-<img width="1911" height="910" alt="image" src="https://github.com/user-attachments/assets/25fca8e3-02de-4438-bd01-cbd117af97e9" />
-<img width="1910" height="916" alt="image" src="https://github.com/user-attachments/assets/d1363f4d-951a-4ac4-8811-dd8cc07c24f9" />
+<img width="1111" height="539" alt="image" src="https://github.com/user-attachments/assets/ad263359-47e0-40b6-864d-ed4d4de778e1" />
