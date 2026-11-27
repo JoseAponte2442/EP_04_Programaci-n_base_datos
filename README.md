@@ -99,7 +99,7 @@ GO
 
 # Actividad 2: Funciones Escalares y Funciones de Tipo Tabla
 
-## 1. Descripción y justificación
+## 1. Descripción y Justificación
 
 Implementación de funciones definidas por el usuario (UDF) en **Microsoft SQL Server (`DB_GestionComercial_EP04`)** para abstraer cálculos comerciales repetitivos y consultas parametrizadas de ventas. Encapsular estas operaciones en objetos del servidor evita duplicar fórmulas de descuento e impuestos en múltiples consultas, centraliza el mantenimiento ante cambios en las reglas de negocio y garantiza resultados consistentes en toda la base de datos.
 
@@ -107,20 +107,22 @@ Implementación de funciones definidas por el usuario (UDF) en **Microsoft SQL S
 
 ## 2. Funciones Implementadas
 
-| Función | Tipo | Parámetros | Retorno | Acción / Propósito |
+| Función | Tipo | Parámetros | Retorno | Acción |
 | :--- | :--- | :--- | :--- | :--- |
 | `dbo.fn_CalcularTotalConIGV` | Escalar | `@Precio money`, `@Cantidad int` | `money` | Calcula el importe total de una venta aplicando descuento por volumen (5% desde 3 unidades y 10% desde 5 unidades) más el 18% de IGV. |
 | `dbo.fn_ReporteVentasPorCiudad` | Tabla (*Inline*) | `@Ciudad nvarchar(50)` | `table` | Devuelve el detalle de ventas realizadas a clientes de una ciudad específica, integrando `Ventas`, `Clientes` y `Productos`. |
 
 ---
 
-## 3. Código SQL y pruebas de consumo
+## 3. Código SQL y Pruebas de Consumo
 
 ### Función 01: Escalar (`dbo.fn_CalcularTotalConIGV`)
 
 ```sql
 use DB_GestionComercial_EP04;
 go
+
+--ACTIVIDAD 02
 
 /* Función escalar */
 create or alter function dbo.fn_CalcularTotalConIGV (
@@ -165,12 +167,16 @@ where dbo.fn_CalcularTotalConIGV(p.Precio, v.Cantidad) > 500
 order by v.VentaID;
 go
 ```
-`dbo.fn_CalcularTotalConIGV` : Se invocó en las cláusulas `SELECT` y `WHERE` para calcular el importe con IGV y filtrar ventas mayores a `500.00`. La consulta retorna 4 registros (`VentaID` 1, 3, 4 y 5), excluye la venta de 2 Mouse Inalámbrico (`177.00`) y aplica el 5% de descuento por volumen en la venta de 3 Teclado Mecánico (`SubtotalBruto = 540.00` → `TotalConIGV = 605.34`).
+
+* `dbo.fn_CalcularTotalConIGV` : Se invocó en las cláusulas `SELECT` y `WHERE` para calcular el importe con IGV y filtrar ventas mayores a `500.00`. La consulta retorna 4 registros (`VentaID` 1, 3, 4 y 5), excluye la venta de 2 Mouse Inalámbrico (`177.00`) y aplica el 5% de descuento por volumen en la venta de 3 Teclado Mecánico (`SubtotalBruto = 540.00` → `TotalConIGV = 605.34`).
 
 
+---
 
-/* Función tipo tabla */
+### Función 02: De tipo tabla (`dbo.fn_ReporteVentasPorCiudad`)
+
 ```sql
+/* Función tipo tabla */
 create OR alter function dbo.fn_ReporteVentasPorCiudad (
     @Ciudad nvarchar(50)
 )
@@ -200,4 +206,29 @@ from dbo.fn_ReporteVentasPorCiudad('Lima')
 order BY FechaVenta;
 go
 ```
-`dbo.fn_ReporteVentasPorCiudad` : Se consumió en la cláusula `FROM` enviando `'Lima'` como parámetro y reutilizando internamente `dbo.fn_CalcularTotalConIGV`. La consulta retorna las 3 ventas correspondientes a los clientes registrados en Lima (Carlos Mendoza y Mariana Torres), ordenadas por `FechaVenta`.
+
+* `dbo.fn_ReporteVentasPorCiudad` : Se consumió en la cláusula `FROM` enviando `'Lima'` como parámetro y reutilizando internamente `dbo.fn_CalcularTotalConIGV`. La consulta retorna las 3 ventas correspondientes a los clientes registrados en Lima (Carlos Mendoza y Mariana Torres), ordenadas por `FechaVenta`.
+
+
+---
+
+## 4. Comparación Funcional y Pertinencia de Uso
+
+### Diferencias principales entre ambas funciones
+
+* **Tipo de retorno:**
+  * **Función escalar (`dbo.fn_CalcularTotalConIGV`):** Devuelve un único valor puntual de un tipo de dato escalar (`money`).
+  * **Función de tipo tabla (`dbo.fn_ReporteVentasPorCiudad`):** Devuelve un conjunto de filas y columnas (`table`).
+
+* **Forma de consumo en consultas:**
+  * **Función escalar:** Se invoca como una expresión dentro de `SELECT`, `WHERE`, `HAVING`, `ORDER BY` o asignada a una variable (`SET`).
+  * **Función de tipo tabla:** Se invoca en la cláusula `FROM` (o mediante `JOIN`), comportándose como una tabla o vista parametrizada.
+
+* **Estructura e impacto en rendimiento:**
+  * **Función escalar:** Utiliza un bloque `BEGIN ... END` con `RETURN @valor`. Si se aplica dentro de un `WHERE` sobre tablas muy grandes, se evalúa fila por fila y puede restar eficiencia al filtro.
+  * **Función de tipo tabla:** Al ser de tipo *inline* (`RETURNS TABLE AS RETURN`), SQL Server integra su consulta directamente en el plan de ejecución y aprovecha los índices de las tablas subyacentes.
+
+### ¿Cuándo resulta pertinente usar cada una?
+
+* **Función escalar:** Conviene utilizarla cuando se necesita calcular, validar o formatear un dato puntual a partir de parámetros de entrada (por ejemplo, aplicar descuentos por volumen, calcular el IGV o concatenar textos) para reutilizar la misma fórmula en distintos reportes sin repetir código.
+* **Función de tipo tabla:** Conviene utilizarla cuando se necesita encapsular una consulta multitabla que devuelva varios registros y columnas filtrados por un parámetro dinámico (por ejemplo, reportes de ventas por ciudad o historial por cliente), funcionando como una alternativa parametrizable a una vista.
