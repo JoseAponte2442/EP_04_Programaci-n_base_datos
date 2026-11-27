@@ -8,7 +8,7 @@
 | 2  | Jose Manuel Aponte Tanta             | 75619512@mail.isil.pe |  100%  |
 | 3  | Andrés Francisco Pimentel Saldaña    | 73213777@mail.isil.pe |  100%    |
 | 4  | Jhonn Paul Ccasani Enciso            | 44061898@mail.isil.pe |  0%    |
-| 5  | Matias Manuel Solano Pinto           | 74363124 |  0%    |
+| 5  | Matias Manuel Solano Pinto           | 74363124@mail.isil.com |  100%    |
 
 # Actividad 1: Automatización mediante Desencadenantes (Triggers)
 
@@ -367,3 +367,164 @@ go
 Para este caso de negocio en **`DB_GestionComercial_EP04`**, **no resulta recomendable utilizar un cursor** en producción cuando el objetivo es consultar, clasificar o reportar el estado del inventario o las ventas. SQL Server es un sistema gestor de bases de datos relacional diseñado bajo teoría de conjuntos, por lo que la consulta declarativa con `CASE` ofrece mejor rendimiento, menor consumo de `tempdb`, menor contención de bloqueos y una salida tabular directamente integrable con otras consultas.
 
 El uso de cursores debe reservarse exclusivamente para escenarios procedimentales muy específicos —como tareas administrativas de mantenimiento por base de datos o ejecución secuencial de procedimientos almacenados por registro— donde resulte inviable expresar la lógica mediante una operación basada en conjuntos.
+
+
+
+
+
+# Actividad 4: Autenticación, Usuarios, Roles y Seguridad
+- Hecha por Matias Manuel Solano Pino
+
+## 1. Descripción, Justificación y Tipo de Autenticación
+
+Implementación de un esquema de control de acceso basado en roles (RBAC) en **Microsoft SQL Server (`DB_GestionComercial_EP04`)** para restringir las operaciones según las responsabilidades de cada perfil de la organización, aplicando el **principio de mínimo privilegio**.
+
+### Tipo de autenticación seleccionada: Autenticación de SQL Server (Modo Mixto)
+- **Justificación técnica:** En una organización comercial donde los usuarios operan desde distintos módulos de aplicación o terminales (caja/ventas, almacén/catálogo y auditoría), la **Autenticación de SQL Server** permite gestionar inicios de sesión (`LOGIN`) independientes del dominio de Windows, facilitando la portabilidad entre servidores, el control centralizado de políticas de contraseñas y la trazabilidad directa por rol dentro del motor de base de datos.
+
+---
+
+## 2. Perfiles de Acceso Definidos
+
+* **Perfil 1 — Ventas (`rol_ventas`):**
+  * **Credenciales:** Login `login_vendedor` → Usuario `usr_vendedor`.
+  * **Permisos:** Lectura (`SELECT`) en `Clientes`, `Productos`, `Ventas` y funciones (`fn_CalcularTotalConIGV`, `fn_ReporteVentasPorCiudad`); inserción (`INSERT`) en `Clientes` y `Ventas`.
+  * **Restricción:** No puede alterar precios (`UPDATE`) ni eliminar información comercial (`DELETE`).
+
+* **Perfil 2 — Almacén (`rol_inventario`):**
+  * **Credenciales:** Login `login_almacen` → Usuario `usr_almacen`.
+  * **Permisos:** Lectura, inserción y actualización (`SELECT`, `INSERT`, `UPDATE`) únicamente sobre `Productos` (disparando los triggers de auditoría).
+  * **Restricción:** Bloqueo explícito de borrado (`DENY DELETE`) en `Productos` y sin visibilidad sobre datos de `Clientes` o `Ventas`.
+
+* **Perfil 3 — Auditoría (`rol_auditoria`):**
+  * **Credenciales:** Login `login_auditor` → Usuario `usr_auditor`.
+  * **Permisos:** Lectura (`SELECT`) en las tres tablas de auditoría (`AuditoriaProductos`, `AuditoriaPrecios`, `AuditoriaClientesEliminados`) y tablas operativas (`Clientes`, `Productos`, `Ventas`).
+  * **Restricción:** Bloqueo total de escritura (`DENY INSERT, UPDATE, DELETE` en el esquema `dbo`) para preservar la integridad de la evidencia.
+
+---
+
+## 3. Código SQL y Pruebas de Validación
+
+### Configuración de Logins, Roles, Usuarios y Permisos
+
+```sql
+USE master;
+GO
+
+-- 1. Creación de inicios de sesión (Logins) a nivel de servidor
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = 'login_vendedor')
+    CREATE LOGIN login_vendedor WITH PASSWORD = 'Vendedor#2026_Secure!', CHECK_POLICY = ON;
+
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = 'login_almacen')
+    CREATE LOGIN login_almacen WITH PASSWORD = 'Almacen#2026_Secure!', CHECK_POLICY = ON;
+
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = 'login_auditor')
+    CREATE LOGIN login_auditor WITH PASSWORD = 'Auditor#2026_Secure!', CHECK_POLICY = ON;
+GO
+
+USE DB_GestionComercial_EP04;
+GO
+
+-- 2. Creación de roles personalizados de base de datos
+CREATE ROLE rol_ventas;
+CREATE ROLE rol_inventario;
+CREATE ROLE rol_auditoria;
+GO
+
+-- 3. Asignación de permisos granulares por rol
+-- Rol Ventas
+GRANT SELECT ON dbo.Clientes TO rol_ventas;
+GRANT SELECT ON dbo.Productos TO rol_ventas;
+GRANT SELECT ON dbo.Ventas TO rol_ventas;
+GRANT INSERT ON dbo.Clientes TO rol_ventas;
+GRANT INSERT ON dbo.Ventas TO rol_ventas;
+GRANT EXECUTE ON dbo.fn_CalcularTotalConIGV TO rol_ventas;
+GRANT SELECT ON dbo.fn_ReporteVentasPorCiudad TO rol_ventas;
+
+-- Rol Inventario
+GRANT SELECT, INSERT, UPDATE ON dbo.Productos TO rol_inventario;
+DENY DELETE ON dbo.Productos TO rol_inventario;
+
+-- Rol Auditoría
+GRANT SELECT ON dbo.AuditoriaProductos TO rol_auditoria;
+GRANT SELECT ON dbo.AuditoriaPrecios TO rol_auditoria;
+GRANT SELECT ON dbo.AuditoriaClientesEliminados TO rol_auditoria;
+GRANT SELECT ON dbo.Clientes TO rol_auditoria;
+GRANT SELECT ON dbo.Productos TO rol_auditoria;
+GRANT SELECT ON dbo.Ventas TO rol_auditoria;
+DENY INSERT, UPDATE, DELETE ON SCHEMA::dbo TO rol_auditoria;
+GO
+
+-- 4. Creación de usuarios y asignación a sus roles
+CREATE USER usr_vendedor FOR LOGIN login_vendedor;
+CREATE USER usr_almacen FOR LOGIN login_almacen;
+CREATE USER usr_auditor FOR LOGIN login_auditor;
+GO
+
+ALTER ROLE rol_ventas ADD MEMBER usr_vendedor;
+ALTER ROLE rol_inventario ADD MEMBER usr_almacen;
+ALTER ROLE rol_auditoria ADD MEMBER usr_auditor;
+GO
+```
+
+- **Creación de objetos de seguridad:** Se configuraron los 3 inicios de sesión en `master`, los 3 roles en `DB_GestionComercial_EP04` y la asignación granular de permisos.
+
+<img width="1197" height="521" alt="image" src="https://github.com/user-attachments/assets/dde65312-d5ad-4d95-ae65-e289d044b558" />
+
+---
+
+### Validación de Accesos mediante `EXECUTE AS USER`
+
+```sql
+USE DB_GestionComercial_EP04;
+GO
+
+-- PRUEBA 1: Perfil Vendedor (usr_vendedor)
+EXECUTE AS USER = 'usr_vendedor';
+    -- Permitido: consultar ventas usando la función escalar
+    SELECT VentaID, dbo.fn_CalcularTotalConIGV(350.00, Cantidad) AS TotalCalculado 
+    FROM dbo.Ventas;
+
+    -- Denegado: intentar cambiar el precio de un producto (Msg 229)
+    UPDATE dbo.Productos SET Precio = 10.00 WHERE ProductoID = 1;
+REVERT;
+GO
+
+-- PRUEBA 2: Perfil Almacén (usr_almacen)
+EXECUTE AS USER = 'usr_almacen';
+    -- Permitido: actualizar stock de un producto
+    UPDATE dbo.Productos SET Stock = Stock + 5 WHERE ProductoID = 1;
+
+    -- Denegado: intentar consultar datos de clientes (Msg 229)
+    SELECT * FROM dbo.Clientes;
+REVERT;
+GO
+
+-- PRUEBA 3: Perfil Auditor (usr_auditor)
+EXECUTE AS USER = 'usr_auditor';
+    -- Permitido: revisar registros de auditoría
+    SELECT * FROM dbo.AuditoriaPrecios;
+
+    -- Denegado: intentar eliminar registros de auditoría (Msg 229)
+    DELETE FROM dbo.AuditoriaPrecios;
+REVERT;
+GO
+```
+
+- **`usr_vendedor` (`rol_ventas`):** Ejecutó correctamente la consulta sobre `Ventas` consumiendo `dbo.fn_CalcularTotalConIGV` (retornando los 5 registros calculados), pero SQL Server bloqueó con error `Msg 229 (UPDATE permission was denied)` el intento de alterar precios en `Productos`.
+- **`usr_almacen` (`rol_inventario`):** Actualizó el inventario en `Productos` sin restricciones, pero recibió bloqueo `Msg 229 (SELECT permission was denied)` al intentar consultar información personal en `Clientes`.
+- **`usr_auditor` (`rol_auditoria`):** Pudo auditar las tablas de historial (`AuditoriaPrecios`), pero el motor denegó con `Msg 229 (DELETE permission was denied)` cualquier intento de borrar evidencia de auditoría.
+
+<img width="1367" height="617" alt="image" src="https://github.com/user-attachments/assets/2b4d6704-7a5d-4400-82ef-bcd702114559" />
+
+<img width="1380" height="666" alt="image" src="https://github.com/user-attachments/assets/3a82d4bd-3e20-41de-8940-a6121bd681be" />
+
+---
+
+## 4. Propósito de la Administración de Claves y Certificados en SQL Server
+
+Dentro de la estrategia integral de seguridad de SQL Server (Sesión 13), los permisos de usuarios y roles protegen el **acceso lógico**, mientras que las **claves y certificados** protegen la **confidencialidad e integridad de los datos almacenados y en tránsito** mediante criptografía:
+
+- **Jerarquía de cifrado de SQL Server:**
+  - **Service Master Key (SMK):** Clave raíz generada automáticamente a nivel de instancia; protege las claves maestras de cada base de datos.
+  - **Database Master Key (DMK):** Clave simétrica creada dentro de `DB_GestionComercial_EP04` (`CREATE MASTER KEY ENCRYPTION BY PASSWORD = ...`) que protege los certificados y claves asimétricas locales de la base de datos.
