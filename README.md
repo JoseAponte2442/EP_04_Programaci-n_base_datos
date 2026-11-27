@@ -239,3 +239,129 @@ go
 
 * **Función escalar:** Conviene utilizarla cuando se necesita calcular, validar o formatear un dato puntual a partir de parámetros de entrada (por ejemplo, aplicar descuentos por volumen, calcular el IGV o concatenar textos) para reutilizar la misma fórmula en distintos reportes sin repetir código.
 * **Función de tipo tabla:** Conviene utilizarla cuando se necesita encapsular una consulta multitabla que devuelva varios registros y columnas filtrados por un parámetro dinámico (por ejemplo, reportes de ventas por ciudad o historial por cliente), funcionando como una alternativa parametrizable a una vista.
+
+
+# Actividad 2: Cursor y evaluación crítica de alternativas
+* Hecha por Imanol Ponce de León
+
+USE DB_GestionComercial;
+GO
+
+/* ============================================================================
+   1. IMPLEMENTACIÓN Y CONSUMO DEL CURSOR (Recorrido fila por fila)
+   ============================================================================
+   Objetivo: Recorrer la tabla Productos registro por registro para evaluar
+   su nivel de inventario actual y emitir una alerta individual en consola.
+   ============================================================================ */
+
+PRINT '--- INICIO DE EJECUCIÓN DEL CURSOR ---';
+
+-- Declaración de variables receptoras para cada columna del conjunto
+DECLARE @IdProd INT, 
+        @NombreProd VARCHAR(80), 
+        @StockActual INT,
+        @MensajeEstado VARCHAR(150);
+
+-- Declaración del cursor (FAST_FORWARD: solo avance y solo lectura para optimizar recursos)
+DECLARE cur_RevisionInventario CURSOR FAST_FORWARD FOR
+SELECT IdProducto, Nombre, Stock 
+FROM dbo.Productos
+ORDER BY IdProducto ASC;
+
+-- Apertura del cursor (ejecuta el SELECT y carga los datos en memoria)
+OPEN cur_RevisionInventario;
+
+-- Lectura de la primera fila hacia las variables locales
+FETCH NEXT FROM cur_RevisionInventario INTO @IdProd, @NombreProd, @StockActual;
+
+-- Bucle de recorrido mientras existan filas disponibles (@@FETCH_STATUS = 0)
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    -- Evaluación lógica individual por cada fila leída
+    IF @StockActual < 20
+        SET @MensajeEstado = 'ALERTA: Reabastecer urgentemente';
+    ELSE
+        SET @MensajeEstado = 'OK: Stock dentro del rango normal';
+
+    -- Salida verificable por consola
+    PRINT CONCAT(
+        'ID: ', @IdProd, 
+        ' | Producto: ', @NombreProd, 
+        ' | Stock: ', @StockActual, 
+        ' -> ', @MensajeEstado
+    );
+
+    -- Avance al siguiente registro
+    FETCH NEXT FROM cur_RevisionInventario INTO @IdProd, @NombreProd, @StockActual;
+END;
+
+-- Liberación obligatoria de recursos y memoria asignada al cursor
+CLOSE cur_RevisionInventario;
+DEALLOCATE cur_RevisionInventario;
+
+PRINT '--- FIN DE EJECUCIÓN DEL CURSOR ---';
+GO
+
+
+/* ============================================================================
+   2. ALTERNATIVA COMPARADA: OPERACIÓN BASADA EN CONJUNTOS (Set-Based)
+   ============================================================================
+   Objetivo: Resolver exactamente la misma regla de negocio mediante una
+   consulta declarativa estándar utilizando la expresión condicional CASE.
+   ============================================================================ */
+
+SELECT 
+    IdProducto AS [ID],
+    Nombre AS [Producto],
+    PrecioUnitario AS [Precio Unitario],
+    Stock AS [Stock Actual],
+    CASE 
+        WHEN Stock < 20 THEN 'ALERTA: Reabastecer urgentemente'
+        ELSE 'OK: Stock dentro del rango normal'
+    END AS [Estado de Inventario]
+FROM dbo.Productos
+ORDER BY IdProducto ASC;
+GO
+
+
+/* ============================================================================
+   3. COMPARACIÓN TÉCNICA Y CONCLUSIÓN SUSTENTADA
+   ============================================================================
+
+   A) VENTAJAS DEL CURSOR (Enfoque Procedimental / Row-By-Row):
+      - Control granular: Permite ejecutar lógica compleja fila por fila cuando 
+        cada registro exige invocar un procedimiento almacenado externo, enviar 
+        correos individuales o realizar cálculos donde la fila N depende 
+        estrictamente del resultado de la fila N-1.
+      - Claridad algorítmica: Resulta familiar para desarrolladores acostumbrados 
+        a estructuras iterativas (while/for) en programación imperativa.
+
+   B) DESVENTAJAS E IMPLICANCIAS EN SQL SERVER:
+      - Sobrecarga de memoria y TempDB: El cursor reserva espacio en memoria y 
+        en la base de datos temporal (tempdb) para mantener el conjunto activo 
+        durante todo el ciclo de vida (OPEN hasta DEALLOCATE).
+      - Mayor tiempo de bloqueo (Concurrencia): Mantiene bloqueos compartidos o 
+        de actualización sobre las filas durante más tiempo, incrementando el 
+        riesgo de contención con otras transacciones concurrentes.
+      - Costo de CPU y red: Ejecutar múltiples instrucciones FETCH genera 
+        cambios de contexto repetitivos en el motor por cada registro procesado.
+      - Riesgo de fuga de recursos: Si ocurre un error antes de ejecutar CLOSE y 
+        DEALLOCATE, el cursor permanece abierto consumiendo recursos de sesión.
+
+   C) CONCLUSIÓN TÉCNICAMENTE SUSTENTADA:
+      Para el caso de evaluación de inventario y las operaciones comerciales 
+      de la organización, NO resulta apropiado preferir el cursor frente a la 
+      alternativa basada en conjuntos. 
+      
+      Microsoft SQL Server es un motor relacional diseñado y optimizado para 
+      procesar conjuntos completos de datos en bloque mediante álgebra relacional. 
+      La consulta con CASE resuelve el requerimiento en una sola lectura de 
+      páginas de datos, permite al optimizador de consultas aprovechar índices y 
+      paralelismo, reduce la contención de bloqueos y entrega un resultado 
+      tabular reutilizable por aplicaciones o reportes.
+      
+      El uso de cursores debe restringirse únicamente a tareas administrativas 
+      puntuales (como respaldos iterativos de múltiples bases de datos o 
+      ejecución de procedimientos almacenados por fila) donde una operación de 
+      conjunto sea técnicamente inviable.
+   ============================================================================ */
