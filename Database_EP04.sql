@@ -27,6 +27,14 @@ CREATE TABLE Ventas (
 );
 
 -- Tablas de auditoría (para demostrar los triggers)
+
+CREATE TABLE AuditoriaProductos (
+	AuditoriaID INT IDENTITY PRIMARY KEY,
+	NombreProducto NVARCHAR(50) NULL,
+	ProductoID int NOT NULL,
+	Accion varchar(10) NOT NULL,
+	Fecha datetime2 NOT NULL DEFAULT SYSDATETIME());
+
 CREATE TABLE AuditoriaPrecios (
     AuditoriaID INT IDENTITY(1,1) PRIMARY KEY,
     ProductoID INT,
