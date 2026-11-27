@@ -114,7 +114,7 @@ Implementación de funciones definidas por el usuario (UDF) en **Microsoft SQL S
 
 ---
 
-## 3. Código SQL y Pruebas de Consumo
+## 3. Código SQL y pruebas de consumo
 
 ### Función 01: Escalar (`dbo.fn_CalcularTotalConIGV`)
 
